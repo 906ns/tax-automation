@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ファイルアップロード - 確定申告自動化ツール</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', -apple-system, sans-serif; background: #f5f7fa; color: #1a1a2e; min-height: 100vh; }
+
+        header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header h1 { font-size: 20px; font-weight: 600; }
+        .back-btn { color: white; text-decoration: none; font-size: 13px; opacity: 0.7; }
+        .back-btn:hover { opacity: 1; }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        @media (max-width: 600px) { .upload-grid { grid-template-columns: 1fr; } }
+
+        .upload-card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid #e8ecf0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .upload-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+        .upload-card p { font-size: 13px; color: #6b7280; margin-bottom: 20px; }
+
+        .drop-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+        .drop-zone:hover, .drop-zone.dragover { border-color: #4361ee; background: #eff6ff; }
+        .drop-zone-icon { font-size: 36px; margin-bottom: 10px; }
+        .drop-zone p { font-size: 13px; color: #9ca3af; margin: 0; }
+        .drop-zone strong { color: #4361ee; }
+
+        input[type="file"] { display: none; }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
+        }
+        .btn-primary { background: #4361ee; color: white; }
+        .btn-primary:hover { background: #3451d1; }
+        .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+
+        .result-section {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid #e8ecf0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .result-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+
+        .result-item {
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .result-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .result-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .result-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+        .file-list { margin-top: 10px; font-size: 12px; color: #6b7280; }
+        .progress { margin-top: 10px; }
+        progress { width: 100%; height: 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:24px;">📤</span>
+        <h1>ファイルアップロード</h1>
+    </div>
+    <a href="/" class="back-btn">← トップへ戻る</a>
+</header>
+
+<div class="container">
+
+    <div class="upload-grid">
+
+        <!-- Amazon PDF -->
+        <div class="upload-card">
+            <h2>📄 Amazon領収書 PDF</h2>
+            <p>Amazonから届く注文確認メールのPDFを選択してください。複数ファイル可。</p>
+
+            <div class="drop-zone" id="amazon-drop" onclick="document.getElementById('amazon-file').click()">
+                <div class="drop-zone-icon">📁</div>
+                <p><strong>クリックして選択</strong><br>またはここにドロップ</p>
+                <div class="file-list" id="amazon-file-list"></div>
+            </div>
+            <input type="file" id="amazon-file" accept=".pdf" multiple onchange="handleAmazonFiles(this)">
+            <button class="btn btn-primary" id="amazon-btn" onclick="uploadAmazon()" disabled>
+                🚀 アップロード・解析開始
+            </button>
+            <div id="amazon-progress"></div>
+        </div>
+
+        <!-- Mercari CSV -->
+        <div class="upload-card">
+            <h2>📊 メルカリ売上 CSV</h2>
+            <p>メルカリの売上管理画面からダウンロードしたCSVファイルを選択してください。</p>
+
+            <div class="drop-zone" id="mercari-drop" onclick="document.getElementById('mercari-file').click()">
+                <div class="drop-zone-icon">📁</div>
+                <p><strong>クリックして選択</strong><br>またはここにドロップ</p>
+                <div class="file-list" id="mercari-file-list"></div>
+            </div>
+            <input type="file" id="mercari-file" accept=".csv" onchange="handleMercariFile(this)">
+            <button class="btn btn-primary" id="mercari-btn" onclick="uploadMercari()" disabled>
+                🚀 アップロード・処理開始
+            </button>
+            <div id="mercari-progress"></div>
+        </div>
+
+    </div>
+
+    <div class="result-section">
+        <h2>📋 処理結果</h2>
+        <div id="results">
+            <div class="result-info">ファイルをアップロードすると結果がここに表示されます。</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let amazonFiles = [];
+    let mercariFile = null;
+
+    function handleAmazonFiles(input) {
+        amazonFiles = Array.from(input.files);
+        document.getElementById('amazon-file-list').textContent = amazonFiles.map(f => f.name).join(', ');
+        document.getElementById('amazon-btn').disabled = amazonFiles.length === 0;
+    }
+
+    function handleMercariFile(input) {
+        mercariFile = input.files[0];
+        document.getElementById('mercari-file-list').textContent = mercariFile ? mercariFile.name : '';
+        document.getElementById('mercari-btn').disabled = !mercariFile;
+    }
+
+    async function uploadAmazon() {
+        if (!amazonFiles.length) return;
+        document.getElementById('amazon-btn').disabled = true;
+        document.getElementById('amazon-progress').innerHTML = '<div class="result-info">⏳ AI解析中...しばらくお待ちください</div>';
+
+        const formData = new FormData();
+        amazonFiles.forEach(f => formData.append('files', f));
+
+        try {
+            const res = await fetch('/api/upload/amazon', { method: 'POST', body: formData });
+            const data = await res.json();
+            document.getElementById('amazon-progress').innerHTML = '';
+
+            data.results.forEach(r => {
+                addResult(r.success
+                    ? `✅ ${r.filename} → ${r.items_count}件の仕入れデータを抽出しました`
+                    : `❌ ${r.filename} → エラー: ${r.error}`,
+                    r.success ? 'success' : 'error'
+                );
+            });
+        } catch(e) {
+            addResult('❌ アップロードに失敗しました: ' + e.message, 'error');
+        }
+        document.getElementById('amazon-btn').disabled = false;
+    }
+
+    async function uploadMercari() {
+        if (!mercariFile) return;
+        document.getElementById('mercari-btn').disabled = true;
+        document.getElementById('mercari-progress').innerHTML = '<div class="result-info">⏳ CSV処理中...</div>';
+
+        const formData = new FormData();
+        formData.append('file', mercariFile);
+
+        try {
+            const res = await fetch('/api/upload/mercari', { method: 'POST', body: formData });
+            const data = await res.json();
+            document.getElementById('mercari-progress').innerHTML = '';
+            addResult(`✅ ${data.filename} → ${data.items_count}件の売上データを取り込みました`, 'success');
+        } catch(e) {
+            addResult('❌ アップロードに失敗しました: ' + e.message, 'error');
+        }
+        document.getElementById('mercari-btn').disabled = false;
+    }
+
+    function addResult(msg, type) {
+        const el = document.getElementById('results');
+        if (el.querySelector('.result-info') && el.querySelectorAll('div').length === 1) {
+            el.innerHTML = '';
+        }
+        const div = document.createElement('div');
+        div.className = `result-item result-${type}`;
+        div.innerHTML = msg;
+        el.appendChild(div);
+    }
+
+    // ドラッグ&ドロップ
+    ['amazon-drop', 'mercari-drop'].forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('dragover'); });
+        el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+        el.addEventListener('drop', e => {
+            e.preventDefault();
+            el.classList.remove('dragover');
+            if (id === 'amazon-drop') {
+                document.getElementById('amazon-file').files = e.dataTransfer.files;
+                handleAmazonFiles(document.getElementById('amazon-file'));
+            } else {
+                document.getElementById('mercari-file').files = e.dataTransfer.files;
+                handleMercariFile(document.getElementById('mercari-file'));
+            }
+        });
+    });
+</script>
+</body>
+</html>
