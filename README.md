@@ -20,6 +20,12 @@ Amazon仕入れ → メルカリ販売の物販ビジネス向け確定申告支
    - https://aistudio.google.com/app/apikey
    - 無料で取得可能
 
+## 📸 スクリーンショット
+
+![確定申告自動化ツール](tax-automation/screenshot.png)
+
+---
+
 ## セットアップ
 
 1. `.env.example`を`.env`にコピーして、Gemini APIキーを設定
