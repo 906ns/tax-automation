@@ -22,7 +22,7 @@ Amazon仕入れ → メルカリ販売の物販ビジネス向け確定申告支
 
 ## 📸 スクリーンショット
 
-![確定申告自動化ツール](tax-automation/screenshot.png)
+![確定申告自動化ツール](screenshot.png)
 
 ---
 
