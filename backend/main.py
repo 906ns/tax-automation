@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 from typing import List
 import shutil
+import uuid
 from datetime import datetime
 
 from .config import settings, ensure_directories
@@ -59,8 +60,9 @@ async def upload_amazon_pdfs(
     results = []
     
     for file in files:
-        # ファイルを保存
-        file_path = settings.upload_dir / file.filename
+        # ファイルを保存（ファイル名サニタイズ: パストラバーサル対策）
+        safe_filename = f"{uuid.uuid4().hex}_{Path(file.filename).name}"
+        file_path = settings.upload_dir / safe_filename
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
@@ -109,8 +111,9 @@ async def upload_mercari_csv(
     db: Session = Depends(get_db)
 ):
     """メルカリ売上CSVをアップロード"""
-    # ファイルを保存
-    file_path = settings.upload_dir / file.filename
+    # ファイルを保存（ファイル名サニタイズ: パストラバーサル対策）
+    safe_filename = f"{uuid.uuid4().hex}_{Path(file.filename).name}"
+    file_path = settings.upload_dir / safe_filename
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     

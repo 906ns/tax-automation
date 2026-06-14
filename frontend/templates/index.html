@@ -219,7 +219,7 @@
             const res = await fetch('/api/journal/generate', { method: 'POST' });
             const data = await res.json();
             if (data.success) {
-                showMessage(`✅ 仕訳帳を生成しました（${data.journals_count}件）<br><a href="${data.download_url}" class="btn btn-success" style="margin-top:10px; display:inline-flex;">📥 ダウンロード</a>`, 'success');
+                showMessage(`✅ 仕訳帳を生成しました（${data.journals_count}件）`, 'success', data.download_url);
             }
         } catch(e) {
             showMessage('❌ エラーが発生しました', 'error');
@@ -245,11 +245,25 @@
         loadData();
     }
 
-    function showMessage(msg, type) {
+    function showMessage(msg, type, downloadUrl) {
         const el = document.getElementById('status-message');
         const colors = { info: '#eff6ff', success: '#f0fdf4', error: '#fef2f2' };
         const textColors = { info: '#1d4ed8', success: '#166534', error: '#991b1b' };
-        el.innerHTML = `<div class="alert" style="background:${colors[type]};color:${textColors[type]};border:1px solid currentColor;opacity:0.4;">${msg}</div>`;
+        const div = document.createElement('div');
+        div.className = 'alert';
+        div.style.cssText = `background:${colors[type]};color:${textColors[type]};border:1px solid currentColor;opacity:0.4;`;
+        div.textContent = msg;
+        if (downloadUrl) {
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.className = 'btn btn-success';
+            link.style.cssText = 'margin-top:10px; display:inline-flex;';
+            link.textContent = '📥 ダウンロード';
+            div.appendChild(document.createElement('br'));
+            div.appendChild(link);
+        }
+        el.innerHTML = '';
+        el.appendChild(div);
     }
 
     loadData();
