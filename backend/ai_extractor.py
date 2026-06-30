@@ -1,4 +1,4 @@
-from google import genai
+import anthropic
 from pathlib import Path
 from typing import List, Dict, Any
 import json
@@ -8,8 +8,8 @@ from .config import settings
 
 class AmazonInvoiceExtractor:
     def __init__(self):
-        self.client = genai.Client(api_key=settings.gemini_api_key)
-        self.model = "gemini-1.5-flash"
+        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        self.model = "claude-haiku-4-5-20251001"
 
     def extract_from_pdf(self, pdf_path: Path) -> List[Dict[str, Any]]:
         """
@@ -17,18 +17,6 @@ class AmazonInvoiceExtractor:
 
         Returns:
             List[Dict]: 抽出された商品情報のリスト
-            [
-                {
-                    "order_number": "123-4567890-1234567",
-                    "order_date": "2024-12-25",
-                    "product_name": "商品名",
-                    "asin": "B08XXXX",
-                    "quantity": 2,
-                    "unit_price": 1500.0,
-                    "total_price": 3000.0,
-                    "invoice_number": "適格請求書番号"
-                }
-            ]
         """
         try:
             with open(pdf_path, "rb") as file:
@@ -71,12 +59,13 @@ class AmazonInvoiceExtractor:
 }}
 """
 
-            response = self.client.models.generate_content(
+            response = self.client.messages.create(
                 model=self.model,
-                contents=prompt,
+                max_tokens=4096,
+                messages=[{"role": "user", "content": prompt}],
             )
 
-            response_text = response.text.strip()
+            response_text = response.content[0].text.strip()
 
             if "```json" in response_text:
                 response_text = response_text.split("```json")[1].split("```")[0].strip()

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, Request, Body
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -48,6 +48,12 @@ async def index(request: Request):
 async def upload_page(request: Request):
     """アップロードページ"""
     return templates.TemplateResponse("upload.html", {"request": request})
+
+
+@app.get("/matching", response_class=HTMLResponse)
+async def matching_page(request: Request):
+    """マッチングページ"""
+    return templates.TemplateResponse("matching.html", {"request": request})
 
 
 # Amazon PDF アップロード
@@ -121,8 +127,10 @@ async def upload_mercari_csv(
         # CSV処理
         items = csv_processor.process_csv(file_path)
         
-        # データベースに保存
+        # データベースに保存（日付がないレコードはスキップ）
         for item in items:
+            if not item.get('transaction_date'):
+                continue
             sale = MercariSale(
                 transaction_date=datetime.strptime(item['transaction_date'], '%Y-%m-%d'),
                 product_name=item['product_name'],
@@ -214,7 +222,7 @@ async def get_matching_suggestions(db: Session = Depends(get_db)):
 # マッチング保存
 @app.post("/api/matching/save")
 async def save_matching(
-    matches: List[dict],
+    matches: List[dict] = Body(...),
     db: Session = Depends(get_db)
 ):
     """手動マッチングを保存"""

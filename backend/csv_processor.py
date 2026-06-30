@@ -20,9 +20,9 @@ class MercariCSVProcessor:
         try:
             # CSVを読み込み（エンコーディングを自動検出）
             try:
-                df = pd.read_csv(csv_path, encoding='utf-8')
+                df = pd.read_csv(csv_path, encoding='utf-8', on_bad_lines='skip')
             except UnicodeDecodeError:
-                df = pd.read_csv(csv_path, encoding='shift-jis')
+                df = pd.read_csv(csv_path, encoding='shift-jis', on_bad_lines='skip')
             
             # カラム名を正規化（スペースや全角を削除）
             df.columns = df.columns.str.strip().str.replace(' ', '')
@@ -62,7 +62,7 @@ class MercariCSVProcessor:
     
     def _extract_date(self, row) -> str:
         """取引日時を抽出"""
-        possible_columns = ['取引日時', '取引日', '日付', 'date', '購入日']
+        possible_columns = ['購入日時', '取引日時', '取引日', '日付', 'date', '購入日']
         for col in possible_columns:
             if col in row and pd.notna(row[col]):
                 # 日付をパース
@@ -83,7 +83,7 @@ class MercariCSVProcessor:
     
     def _extract_sale_amount(self, row) -> float:
         """売上金額を抽出"""
-        possible_columns = ['価格', '売上', '販売価格', 'price', '金額']
+        possible_columns = ['商品代金', '価格', '売上', '販売価格', 'price', '金額']
         for col in possible_columns:
             if col in row and pd.notna(row[col]):
                 return float(str(row[col]).replace(',', '').replace('¥', '').replace('円', ''))
@@ -112,7 +112,7 @@ class MercariCSVProcessor:
     
     def _extract_profit(self, row) -> float:
         """利益を抽出（または計算）"""
-        possible_columns = ['受取金額', '利益', '売上金額', 'profit', '入金額']
+        possible_columns = ['販売利益', '受取金額', '利益', '売上金額', 'profit', '入金額']
         for col in possible_columns:
             if col in row and pd.notna(row[col]):
                 return float(str(row[col]).replace(',', '').replace('¥', '').replace('円', ''))

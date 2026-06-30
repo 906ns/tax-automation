@@ -4,7 +4,8 @@ from pathlib import Path
 
 class Settings(BaseSettings):
     # API Keys
-    gemini_api_key: str
+    gemini_api_key: str = ""
+    anthropic_api_key: str = ""
     
     # Directories
     base_dir: Path = Path(__file__).parent.parent

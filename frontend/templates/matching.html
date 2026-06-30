@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仕入れ×売上マッチング - 確定申告自動化ツール</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', -apple-system, sans-serif; background: #f5f7fa; color: #1a1a2e; min-height: 100vh; }
+
+        header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header h1 { font-size: 20px; font-weight: 600; }
+        .back-btn { color: white; text-decoration: none; font-size: 13px; opacity: 0.7; }
+        .back-btn:hover { opacity: 1; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        .alert-info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid #e8ecf0;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+        .tab.active { background: #4361ee; color: white; }
+        .tab:hover:not(.active) { background: #f3f4f6; }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid #e8ecf0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            margin-bottom: 16px;
+        }
+        .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #374151; }
+
+        .suggestion-item {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto;
+            gap: 12px;
+            align-items: center;
+            padding: 16px;
+            border: 1px solid #e8ecf0;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+        .suggestion-item:hover { border-color: #4361ee; background: #fafbff; }
+        .suggestion-item.matched { border-color: #10b981; background: #f0fdf4; }
+
+        .item-info { min-width: 0; }
+        .item-info .name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-info .meta { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+        .item-info .price { font-size: 14px; font-weight: 600; color: #4361ee; }
+
+        .similarity-badge {
+            background: #f0f4ff;
+            color: #4361ee;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .similarity-badge.high { background: #f0fdf4; color: #166534; }
+        .similarity-badge.low { background: #fef9c3; color: #854d0e; }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary { background: #4361ee; color: white; }
+        .btn-primary:hover { background: #3451d1; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-secondary { background: #f3f4f6; color: #374151; }
+        .btn-secondary:hover { background: #e5e7eb; }
+        .btn-danger { background: #fee2e2; color: #991b1b; }
+        .btn-danger:hover { background: #fecaca; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        .match-btn { padding: 8px 14px; font-size: 12px; }
+
+        .action-bar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .manual-match-area {
+            display: grid;
+            grid-template-columns: 1fr 60px 1fr;
+            gap: 16px;
+            align-items: start;
+            min-width: 0;
+        }
+        .manual-match-area > div { min-width: 0; overflow: hidden; }
+        @media (max-width: 768px) {
+            .manual-match-area { grid-template-columns: 1fr; }
+            .suggestion-item { grid-template-columns: 1fr; }
+        }
+
+        .item-list {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #e8ecf0;
+            border-radius: 12px;
+        }
+        .item-list-header {
+            padding: 12px 16px;
+            background: #f9fafb;
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b7280;
+            border-bottom: 1px solid #e8ecf0;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .list-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 13px;
+        }
+        .list-item:hover { background: #f9fafb; }
+        .list-item.selected { background: #eff6ff; border-left: 3px solid #4361ee; }
+        .list-item.already-matched { opacity: 0.4; pointer-events: none; }
+        .list-item .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .list-item .meta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+        .match-arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding-top: 40px;
+        }
+        .arrow-icon { font-size: 24px; color: #d1d5db; }
+
+        .search-box {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e8ecf0;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        .search-box:focus { outline: none; border-color: #4361ee; box-shadow: 0 0 0 3px rgba(67,97,238,0.1); }
+
+        .pending-matches {
+            margin-top: 16px;
+        }
+        .pending-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #eff6ff;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+        .pending-item .remove { cursor: pointer; color: #991b1b; font-weight: bold; }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #9ca3af;
+        }
+        .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; }
+
+        .stats-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .stat-chip {
+            background: white;
+            border: 1px solid #e8ecf0;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stat-chip .value { font-weight: 700; color: #4361ee; font-size: 18px; }
+
+        .loading { text-align: center; padding: 40px; color: #9ca3af; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>STEP 3: 仕入れと売上を突合</h1>
+    <a href="/" class="back-btn">< トップに戻る</a>
+</header>
+
+<div class="container">
+
+    <div class="stats-row" id="stats-row">
+        <div class="stat-chip">Amazon仕入れ <span class="value" id="stat-amazon">-</span>件</div>
+        <div class="stat-chip">メルカリ売上 <span class="value" id="stat-mercari">-</span>件</div>
+        <div class="stat-chip">マッチ済み <span class="value" id="stat-matched">0</span>件</div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('auto')">自動マッチング候補</button>
+        <button class="tab" onclick="switchTab('manual')">手動マッチング</button>
+    </div>
+
+    <!-- 自動マッチング候補 -->
+    <div id="panel-auto" class="panel active">
+        <div class="card">
+            <h2>AI提案マッチング候補</h2>
+            <p style="font-size:13px;color:#6b7280;margin-top:-10px;margin-bottom:16px;">
+                商品名の類似度をもとに自動で候補を提案します。確認して承認してください。
+            </p>
+            <div id="suggestions-list">
+                <div class="loading">読み込み中...</div>
+            </div>
+        </div>
+        <div class="action-bar">
+            <button class="btn btn-success" onclick="saveSelectedSuggestions()">選択した候補を保存</button>
+            <button class="btn btn-secondary" onclick="loadSuggestions()">候補を再取得</button>
+        </div>
+    </div>
+
+    <!-- 手動マッチング -->
+    <div id="panel-manual" class="panel">
+        <div class="card">
+            <h2>手動でマッチング</h2>
+            <p style="font-size:13px;color:#6b7280;margin-top:-10px;margin-bottom:16px;">
+                左のAmazon仕入れと右のメルカリ売上を1つずつ選んでペアにしてください。
+            </p>
+            <div class="manual-match-area">
+                <div>
+                    <input type="text" class="search-box" placeholder="Amazon商品を検索..." oninput="filterList('amazon', this.value)">
+                    <div class="item-list" id="amazon-list">
+                        <div class="item-list-header">Amazon仕入れ</div>
+                    </div>
+                </div>
+                <div class="match-arrow">
+                    <div class="arrow-icon">→</div>
+                    <button class="btn btn-primary btn-sm" onclick="addManualPair()" id="pair-btn" disabled>紐付け</button>
+                </div>
+                <div>
+                    <input type="text" class="search-box" placeholder="メルカリ商品を検索..." oninput="filterList('mercari', this.value)">
+                    <div class="item-list" id="mercari-list">
+                        <div class="item-list-header">メルカリ売上</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pending-matches" id="pending-area" style="display:none;">
+                <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;">紐付け待ち</h3>
+                <div id="pending-list"></div>
+                <div style="margin-top:12px;">
+                    <button class="btn btn-success" onclick="savePendingMatches()">まとめて保存</button>
+                    <button class="btn btn-danger btn-sm" onclick="clearPending()" style="margin-left:8px;">クリア</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-message"></div>
+</div>
+
+<script>
+let amazonData = [];
+let mercariData = [];
+let suggestions = [];
+let selectedSuggestions = new Set();
+let selectedAmazon = null;
+let selectedMercari = null;
+let pendingMatches = [];
+let matchedAmazonIds = new Set();
+let matchedMercariIds = new Set();
+
+async function init() {
+    await loadData();
+    await loadSuggestions();
+}
+
+async function loadData() {
+    try {
+        const [amazon, mercari] = await Promise.all([
+            fetch('/api/data/amazon').then(r => r.json()),
+            fetch('/api/data/mercari').then(r => r.json())
+        ]);
+        amazonData = amazon.items;
+        mercariData = mercari.items.filter(i => !i.is_cancelled);
+        document.getElementById('stat-amazon').textContent = amazonData.length;
+        document.getElementById('stat-mercari').textContent = mercariData.length;
+        renderManualLists();
+    } catch(e) {
+        showMessage('データの読み込みに失敗しました', 'error');
+    }
+}
+
+async function loadSuggestions() {
+    const el = document.getElementById('suggestions-list');
+    el.innerHTML = '<div class="loading">マッチング候補を検索中...</div>';
+    selectedSuggestions.clear();
+    try {
+        const res = await fetch('/api/matching/suggestions');
+        const data = await res.json();
+        suggestions = data.suggestions;
+        renderSuggestions();
+    } catch(e) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">!</div><p>候補の取得に失敗しました</p></div>';
+    }
+}
+
+function renderSuggestions() {
+    const el = document.getElementById('suggestions-list');
+    if (suggestions.length === 0) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><p>マッチング候補が見つかりませんでした。<br>手動マッチングタブで紐付けしてください。</p></div>';
+        return;
+    }
+    el.innerHTML = suggestions.map((s, i) => {
+        const simClass = s.similarity >= 0.8 ? 'high' : s.similarity >= 0.6 ? '' : 'low';
+        const checked = selectedSuggestions.has(i) ? 'matched' : '';
+        return `
+        <div class="suggestion-item ${checked}" onclick="toggleSuggestion(${i})" data-idx="${i}">
+            <div class="item-info">
+                <div class="name" title="${esc(s.amazon_product)}">Amazon: ${esc(s.amazon_product)}</div>
+                <div class="meta">${s.amazon_date} / ¥${Number(s.amazon_price).toLocaleString()}</div>
+            </div>
+            <div class="similarity-badge ${simClass}">${Math.round(s.similarity * 100)}%</div>
+            <div class="item-info">
+                <div class="name" title="${esc(s.mercari_product)}">メルカリ: ${esc(s.mercari_product)}</div>
+                <div class="meta">${s.mercari_date} / ¥${Number(s.mercari_price).toLocaleString()}</div>
+            </div>
+            <div>
+                <button class="btn ${checked ? 'btn-success' : 'btn-secondary'} match-btn" onclick="event.stopPropagation();toggleSuggestion(${i})">
+                    ${checked ? '✓ 選択済' : '選択'}
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function toggleSuggestion(idx) {
+    if (selectedSuggestions.has(idx)) {
+        selectedSuggestions.delete(idx);
+    } else {
+        selectedSuggestions.add(idx);
+    }
+    renderSuggestions();
+}
+
+async function saveSelectedSuggestions() {
+    if (selectedSuggestions.size === 0) {
+        showMessage('保存する候補を選択してください', 'info');
+        return;
+    }
+    const matches = [...selectedSuggestions].map(i => ({
+        amazon_id: suggestions[i].amazon_id,
+        mercari_id: suggestions[i].mercari_id
+    }));
+    await saveMatches(matches);
+}
+
+async function saveMatches(matches) {
+    try {
+        const res = await fetch('/api/matching/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(matches)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showMessage(`${matches.length}件の紐付けを保存しました`, 'success');
+            matches.forEach(m => {
+                matchedAmazonIds.add(m.amazon_id);
+                matchedMercariIds.add(m.mercari_id);
+            });
+            document.getElementById('stat-matched').textContent = matchedAmazonIds.size;
+            selectedSuggestions.clear();
+            pendingMatches = [];
+            renderPending();
+            await loadSuggestions();
+            renderManualLists();
+        } else {
+            showMessage(data.detail || 'エラーが発生しました', 'error');
+        }
+    } catch(e) {
+        showMessage('保存に失敗しました: ' + e.message, 'error');
+    }
+}
+
+function renderManualLists() {
+    renderItemList('amazon-list', amazonData, 'amazon');
+    renderItemList('mercari-list', mercariData, 'mercari');
+}
+
+function renderItemList(containerId, items, type) {
+    const el = document.getElementById(containerId);
+    const header = el.querySelector('.item-list-header');
+    el.innerHTML = '';
+    el.appendChild(header);
+
+    const filtered = items.filter(item => {
+        const id = item.id;
+        if (type === 'amazon') return !matchedAmazonIds.has(id);
+        return !matchedMercariIds.has(id);
+    });
+
+    if (filtered.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.style.padding = '20px';
+        empty.innerHTML = '<p>データがありません</p>';
+        el.appendChild(empty);
+        return;
+    }
+
+    filtered.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.dataset.id = item.id;
+        div.dataset.type = type;
+
+        const selected = (type === 'amazon' && selectedAmazon === item.id) ||
+                         (type === 'mercari' && selectedMercari === item.id);
+        if (selected) div.classList.add('selected');
+
+        const alreadyPending = pendingMatches.some(p =>
+            (type === 'amazon' && p.amazon_id === item.id) ||
+            (type === 'mercari' && p.mercari_id === item.id)
+        );
+        if (alreadyPending) div.classList.add('already-matched');
+
+        const date = type === 'amazon' ? item.order_date : item.transaction_date;
+        const price = type === 'amazon' ? item.total_price : item.sale_amount;
+
+        div.innerHTML = `
+            <div class="name" title="${esc(item.product_name)}">${esc(item.product_name)}</div>
+            <div class="meta">${date} / ¥${Number(price).toLocaleString()}</div>
+        `;
+        div.onclick = () => selectItem(type, item.id);
+        el.appendChild(div);
+    });
+}
+
+function selectItem(type, id) {
+    if (type === 'amazon') {
+        selectedAmazon = selectedAmazon === id ? null : id;
+    } else {
+        selectedMercari = selectedMercari === id ? null : id;
+    }
+    document.getElementById('pair-btn').disabled = !(selectedAmazon && selectedMercari);
+    renderManualLists();
+}
+
+function addManualPair() {
+    if (!selectedAmazon || !selectedMercari) return;
+    const amazon = amazonData.find(a => a.id === selectedAmazon);
+    const mercari = mercariData.find(m => m.id === selectedMercari);
+    pendingMatches.push({
+        amazon_id: selectedAmazon,
+        mercari_id: selectedMercari,
+        amazon_name: amazon.product_name,
+        mercari_name: mercari.product_name
+    });
+    selectedAmazon = null;
+    selectedMercari = null;
+    document.getElementById('pair-btn').disabled = true;
+    renderManualLists();
+    renderPending();
+}
+
+function renderPending() {
+    const area = document.getElementById('pending-area');
+    const list = document.getElementById('pending-list');
+    if (pendingMatches.length === 0) {
+        area.style.display = 'none';
+        return;
+    }
+    area.style.display = 'block';
+    list.innerHTML = pendingMatches.map((p, i) => `
+        <div class="pending-item">
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.amazon_name)}</span>
+            <span style="color:#9ca3af;">→</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.mercari_name)}</span>
+            <span class="remove" onclick="removePending(${i})">✕</span>
+        </div>
+    `).join('');
+}
+
+function removePending(idx) {
+    pendingMatches.splice(idx, 1);
+    renderPending();
+    renderManualLists();
+}
+
+function clearPending() {
+    pendingMatches = [];
+    renderPending();
+    renderManualLists();
+}
+
+async function savePendingMatches() {
+    if (pendingMatches.length === 0) return;
+    const matches = pendingMatches.map(p => ({
+        amazon_id: p.amazon_id,
+        mercari_id: p.mercari_id
+    }));
+    await saveMatches(matches);
+}
+
+function filterList(type, query) {
+    const containerId = type + '-list';
+    const el = document.getElementById(containerId);
+    const items = el.querySelectorAll('.list-item');
+    const q = query.toLowerCase();
+    items.forEach(item => {
+        const name = item.querySelector('.name').textContent.toLowerCase();
+        item.style.display = name.includes(q) ? '' : 'none';
+    });
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+}
+
+function showMessage(msg, type) {
+    const el = document.getElementById('status-message');
+    const cls = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+    el.innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+    if (type === 'success') setTimeout(() => el.innerHTML = '', 4000);
+}
+
+function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>

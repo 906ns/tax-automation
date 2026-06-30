@@ -177,7 +177,7 @@ class JournalGenerator:
         df = df[columns]
         
         # CSV出力（Shift-JIS、BOM付き）
-        df.to_csv(output_path, index=False, encoding='shift_jis')
+        df.to_csv(output_path, index=False, encoding='shift_jis', errors='replace')
         
         return output_path
     
