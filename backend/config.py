@@ -4,7 +4,6 @@ from pathlib import Path
 
 class Settings(BaseSettings):
     # API Keys
-    gemini_api_key: str = ""
     anthropic_api_key: str = ""
     
     # Directories

@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 確定申告自動化ツール — Amazon仕入れ→メルカリ販売の物販ビジネス向け、シングルユーザーのローカルツール。
-Amazon適格請求書PDFからGemini APIで仕入れデータを抽出し、メルカリ売上CSVと紐付けて、マネーフォワード形式の仕訳CSVを出力する。
+Amazon適格請求書PDFからClaude API（Anthropic）で仕入れデータを抽出し、メルカリ売上CSVと紐付けて、マネーフォワード形式の仕訳CSVを出力する。
 
 ## Commands
 ```bash
@@ -23,7 +23,7 @@ FastAPI + SQLAlchemy + SQLite。フロントは Jinja2 + Vanilla JS（SPAでは�
 
 データの流れ:
 ```
-PDF → PyPDF2でテキスト抽出 → Gemini APIでJSON化 → AmazonPurchase
+PDF → PyPDF2でテキスト抽出 → Claude APIでJSON化 → AmazonPurchase
 CSV → pandasパース → MercariSale
 AmazonPurchase + MercariSale → ProductMatch（商品名の類似度で紐付け）
 全データ → 仕訳CSV（Shift-JIS、マネーフォワード形式）
@@ -37,5 +37,5 @@ AmazonPurchase + MercariSale → ProductMatch（商品名の類似度で紐付�
 - AI抽出は2段構成（PyPDF2でテキスト化 → LLMへ送る）
 
 ## Environment
-- `GEMINI_API_KEY` が必須（`.env`に設定）
+- `ANTHROPIC_API_KEY` が必須（`.env`に設定）
 - SQLite: `data/data.db` / アップロード: `uploads/` / 出力: `outputs/`

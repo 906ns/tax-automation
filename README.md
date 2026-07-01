@@ -5,7 +5,7 @@ Amazon仕入れ → メルカリ販売の物販ビジネス向け確定申告支
 
 ## 機能
 
-- Amazon適格請求書（PDF）からの仕入れデータ抽出（Gemini API使用）
+- Amazon適格請求書（PDF）からの仕入れデータ抽出（Claude API使用）
 - メルカリ売上CSVの取り込み（キャンセル・返品の自動除外つき）
 - 仕入れと販売の紐付け・在庫管理
 - マネーフォワード形式での仕訳CSV出力（Shift-JIS）
@@ -20,14 +20,14 @@ Amazon仕入れ → メルカリ販売の物販ビジネス向け確定申告支
 |---|---|
 | バックエンド | Python / FastAPI / SQLAlchemy |
 | データベース | SQLite |
-| AI | Gemini API（PDFからの構造化データ抽出） |
+| AI | Claude API / Anthropic（PDFからの構造化データ抽出） |
 | フロントエンド | Jinja2 + Vanilla JS |
 | 環境 | Docker / docker-compose |
 
 ## 処理フロー
 
 ```
-Amazon請求書PDF ──→ Gemini APIで構造化抽出 ──→ 確認・修正画面
+Amazon請求書PDF ──→ Claude APIで構造化抽出 ──→ 確認・修正画面
                                                     │
 メルカリ売上CSV ──→ パース・キャンセル除外 ──────────┤
                                                     ▼
@@ -46,19 +46,19 @@ Amazon請求書PDF ──→ Gemini APIで構造化抽出 ──→ 確認・修
 シングルユーザーのローカルツールであり、同時接続やスケールの要件がないため。DBサーバーの管理コストをなくし、Dockerボリュームにファイル1つで永続化できる構成にしています。
 
 **AI抽出に「確認・修正」ステップを挟んでいる理由**
-税務データは誤りが許されないため、Geminiの抽出結果をそのままDBに保存せず、必ず人間が確認・修正してから確定する設計にしています。
+税務データは誤りが許されないため、Claudeの抽出結果をそのままDBに保存せず、必ず人間が確認・修正してから確定する設計にしています。
 
 **仕訳生成の工夫**
 1取引につき「売上（売掛金/売上高）」「販売手数料」「配送料」の3仕訳を複式簿記のルールに沿って生成します。キャンセル・返品ステータスの取引は仕訳から自動除外されます。出力CSVは会計ソフトでの取り込みを考慮しShift-JISです。
 
 ## セットアップ
 
-1. Gemini APIキーを取得（https://aistudio.google.com/app/apikey）
+1. Anthropic APIキーを取得（https://console.anthropic.com/）
 2. 環境変数を設定して起動
 
 ```bash
 cp .env.example .env
-# .env を編集して GEMINI_API_KEY を設定
+# .env を編集して ANTHROPIC_API_KEY を設定
 docker-compose up -d
 ```
 
@@ -86,7 +86,7 @@ docker-compose restart
 
 ## 対応済みの改善
 
-- **Gemini SDK移行**: 開発時点では `google-generativeai` を使用していたが、非推奨となったため `google-genai` + `gemini-1.5-flash` に移行済み。別プロジェクト（kaitori-monitor）で外部サービスの仕様変更により機能が動かなくなった経験から、外部API依存箇所は定期的な追従が必要だと学んだ
+- **AI基盤の移行（Gemini → Claude）**: 開発当初は Gemini API（`google-generativeai` → `google-genai` + `gemini-1.5-flash`）を使用していたが、抽出精度と保守性を考慮し Anthropic の Claude API（`anthropic` SDK + `claude-haiku-4-5`）へ移行済み。別プロジェクト（kaitori-monitor）で外部サービスの仕様変更により機能が動かなくなった経験から、外部API依存箇所は定期的な追従が必要だと学んだ
 - **テスト追加**: セキュリティ修正（パストラバーサル・XSS対策）とあわせてpytestを導入済み
 - **セキュリティ修正**: ファイルアップロード時のパストラバーサル対策、テンプレートのXSS対策を実施
 
